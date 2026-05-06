@@ -1,0 +1,295 @@
+"""Configuration management for quantum katas benchmark."""
+
+from dataclasses import dataclass, field, asdict
+from enum import Enum
+from pathlib import Path
+from typing import Optional, Union
+import json
+import os
+
+
+class ProviderType(Enum):
+    """Supported LLM providers."""
+
+    ANTHROPIC = "anthropic"
+    OPENAI = "openai"
+    GOOGLE = "google"
+    LITELLM = "litellm"
+    VLLM = "vllm"
+    QISKIT_ASSISTANT = "qiskit_assistant"
+
+
+@dataclass
+class ModelConfig:
+    """Configuration for a specific model."""
+
+    provider: ProviderType
+    model_id: str
+    api_key: Optional[str] = None
+    base_url: Optional[str] = None
+    max_tokens: int = 4096
+    temperature: float = 0.0
+    headers: Optional[dict[str, str]] = None
+
+    def __post_init__(self):
+        """Load API key from environment if not provided."""
+        if self.api_key is None:
+            env_var_map = {
+                ProviderType.ANTHROPIC: "ANTHROPIC_API_KEY",
+                ProviderType.OPENAI: "OPENAI_API_KEY",
+                ProviderType.GOOGLE: "GOOGLE_API_KEY",
+                ProviderType.LITELLM: "LITELLM_API_KEY",
+                ProviderType.VLLM: "VLLM_API_KEY",
+                ProviderType.QISKIT_ASSISTANT: "QISKIT_ASSISTANT_TOKEN",
+            }
+            env_var = env_var_map.get(self.provider)
+            if env_var:
+                self.api_key = os.environ.get(env_var)
+
+
+class PromptStrategy(Enum):
+    """Prompting strategies for evaluation."""
+
+    ZERO_SHOT = "zero_shot"
+    FEW_SHOT_1 = "few_shot_1"
+    FEW_SHOT_3 = "few_shot_3"
+    FEW_SHOT_5 = "few_shot_5"
+    CHAIN_OF_THOUGHT = "chain_of_thought"
+
+
+# Default system prompts
+SYSTEM_PROMPTS = {
+    "default": """You are an expert quantum computing programmer specializing in Qiskit.
+Your task is to implement quantum computing functions using Qiskit.
+Provide ONLY the Python code implementation, no explanations.
+The code should be complete and ready to execute.""",
+
+    "minimal": """Implement the following Qiskit function. Output only Python code.""",
+
+    "detailed": """You are an expert quantum computing programmer with deep knowledge of Qiskit, quantum algorithms, and quantum mechanics.
+
+Your task is to implement quantum computing functions using Qiskit (version 1.0+).
+
+Requirements:
+- Use standard Qiskit imports (QuantumCircuit, QuantumRegister, etc.)
+- Implement the exact function signature provided
+- Return the modified QuantumCircuit
+- Use appropriate quantum gates from qiskit.circuit.library if needed
+
+Provide ONLY the Python code implementation, no explanations or markdown.""",
+
+    "chain_of_thought": """You are an expert quantum computing programmer specializing in Qiskit.
+Your task is to implement quantum computing functions using Qiskit.
+
+First, briefly think through the quantum operations needed, then provide the implementation.
+Format your response as:
+THINKING: <your reasoning>
+CODE:
+```python
+<your code>
+```""",
+}
+
+
+@dataclass
+class PromptConfig:
+    """Configuration for prompting strategy."""
+
+    strategy: PromptStrategy = PromptStrategy.ZERO_SHOT
+    system_prompt: str = "default"  # key in SYSTEM_PROMPTS or custom string
+    few_shot_examples: Optional[list[dict]] = None  # For few-shot, list of {prompt, solution}
+    include_imports: bool = False  # Whether to include common imports in prompt
+
+    def get_system_prompt(self) -> str:
+        """Get the actual system prompt string."""
+        if self.system_prompt in SYSTEM_PROMPTS:
+            return SYSTEM_PROMPTS[self.system_prompt]
+        return self.system_prompt
+
+
+@dataclass
+class RunConfig:
+    """Configuration for multiple runs and statistical analysis."""
+
+    num_runs: int = 1  # Number of runs per task
+    temperatures: list[float] = field(default_factory=lambda: [0.0])  # Temperatures to test
+    seed: Optional[int] = None  # Base seed for reproducibility
+    aggregate_method: str = "majority"  # How to aggregate: "majority", "any", "all"
+
+
+@dataclass
+class EvaluationConfig:
+    """Configuration for code evaluation."""
+
+    check_syntax: bool = True
+    run_tests: bool = True
+    timeout_seconds: float = 30.0
+    max_retries: int = 3
+
+
+@dataclass
+class BenchmarkConfig:
+    """Main benchmark configuration."""
+
+    model: ModelConfig
+    dataset_path: Path = field(default_factory=lambda: Path("dataset/qiskit_quantumkatas.jsonl"))
+    output_dir: Path = field(default_factory=lambda: Path("results"))
+    evaluation: EvaluationConfig = field(default_factory=EvaluationConfig)
+    prompt: PromptConfig = field(default_factory=PromptConfig)
+    runs: RunConfig = field(default_factory=RunConfig)
+    checkpoint_interval: int = 10
+    task_ids: Optional[list[str]] = None
+    categories: Optional[list[str]] = None
+    verbose: bool = False
+
+    def __post_init__(self):
+        """Convert paths if needed."""
+        if isinstance(self.dataset_path, str):
+            self.dataset_path = Path(self.dataset_path)
+        if isinstance(self.output_dir, str):
+            self.output_dir = Path(self.output_dir)
+
+
+# Predefined model configurations
+MODELS = {
+    # Anthropic models
+    "claude-opus": ModelConfig(
+        provider=ProviderType.ANTHROPIC,
+        model_id="claude-opus-4-20250514",
+    ),
+    "claude-sonnet": ModelConfig(
+        provider=ProviderType.ANTHROPIC,
+        model_id="claude-sonnet-4-20250514",
+    ),
+    "claude-haiku": ModelConfig(
+        provider=ProviderType.ANTHROPIC,
+        model_id="claude-haiku-4-20250514",
+    ),
+    # OpenAI models
+    "gpt-4o": ModelConfig(
+        provider=ProviderType.OPENAI,
+        model_id="gpt-4o",
+    ),
+    "gpt-4o-mini": ModelConfig(
+        provider=ProviderType.OPENAI,
+        model_id="gpt-4o-mini",
+    ),
+    "o1": ModelConfig(
+        provider=ProviderType.OPENAI,
+        model_id="o1",
+    ),
+    "o1-mini": ModelConfig(
+        provider=ProviderType.OPENAI,
+        model_id="o1-mini",
+    ),
+    "o3-mini": ModelConfig(
+        provider=ProviderType.OPENAI,
+        model_id="o3-mini",
+    ),
+    # Google Gemini models
+    "gemini-2.5-pro": ModelConfig(
+        provider=ProviderType.GOOGLE,
+        model_id="gemini-2.5-pro",
+    ),
+    "gemini-2.5-flash": ModelConfig(
+        provider=ProviderType.GOOGLE,
+        model_id="gemini-2.5-flash",
+    ),
+    # Qiskit Code Assistant
+    "mistral-qiskit": ModelConfig(
+        provider=ProviderType.QISKIT_ASSISTANT,
+        model_id="mistral-small-3.2-24b-qiskit",
+        base_url="https://qiskit-code-assistant.quantum.ibm.com",
+    ),
+}
+
+
+def get_model_config(model_name: str) -> ModelConfig:
+    """Get a predefined model configuration by name."""
+    if model_name not in MODELS:
+        available = ", ".join(MODELS.keys())
+        raise ValueError(f"Unknown model '{model_name}'. Available: {available}")
+    return MODELS[model_name]
+
+
+def model_config_from_dict(data: dict) -> ModelConfig:
+    """Create a ModelConfig from a dictionary."""
+    provider_str = data.get("provider", "").lower()
+    try:
+        provider = ProviderType(provider_str)
+    except ValueError:
+        valid = [p.value for p in ProviderType]
+        raise ValueError(f"Unknown provider '{provider_str}'. Valid: {valid}")
+
+    return ModelConfig(
+        provider=provider,
+        model_id=data["model_id"],
+        api_key=data.get("api_key"),
+        base_url=data.get("base_url"),
+        max_tokens=data.get("max_tokens", 4096),
+        temperature=data.get("temperature", 0.0),
+        headers=data.get("headers"),
+    )
+
+
+def load_models_from_json(path: Union[str, Path]) -> dict[str, ModelConfig]:
+    """Load model configurations from a JSON file.
+
+    JSON format:
+    {
+      "model-name": {
+        "provider": "anthropic|openai|google|litellm|vllm|qiskit_assistant",
+        "model_id": "model-id-string",
+        "base_url": "optional-base-url",
+        "max_tokens": 4096,
+        "temperature": 0.0
+      }
+    }
+
+    API keys should be set via environment variables, not in the JSON file.
+    """
+    path = Path(path)
+    with open(path) as f:
+        data = json.load(f)
+
+    models = {}
+    for name, config_data in data.items():
+        models[name] = model_config_from_dict(config_data)
+
+    return models
+
+
+def save_models_to_json(path: Union[str, Path], models: Optional[dict[str, ModelConfig]] = None):
+    """Save model configurations to a JSON file.
+
+    Useful for generating an initial config file from the built-in MODELS.
+    """
+    if models is None:
+        models = MODELS
+
+    path = Path(path)
+    data = {}
+    for name, config in models.items():
+        model_data = {
+            "provider": config.provider.value,
+            "model_id": config.model_id,
+            "base_url": config.base_url,
+            "max_tokens": config.max_tokens,
+            "temperature": config.temperature,
+        }
+        if config.headers:
+            model_data["headers"] = config.headers
+        data[name] = model_data
+
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+
+
+def load_config_file(path: Union[str, Path]) -> dict[str, ModelConfig]:
+    """Load models from config file and merge with built-in MODELS.
+
+    Models from the file override built-in models with the same name.
+    """
+    custom_models = load_models_from_json(path)
+    merged = {**MODELS, **custom_models}
+    return merged
