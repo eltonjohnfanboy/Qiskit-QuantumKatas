@@ -400,6 +400,23 @@ Each task in `dataset/qiskit_quantumkatas.jsonl`:
 }
 ```
 
+## Citation
+
+If you use this benchmark or dataset, please cite our paper ([arXiv:2605.27210](https://arxiv.org/abs/2605.27210)):
+
+```bibtex
+@article{cruzbenito2026qiskitquantumkatas,
+  title={Qiskit QuantumKatas: Adapting Microsoft's Quantum Computing Exercises for LLM Evaluation},
+  author={Cruz-Benito, Juan and Faro, Ismael},
+  journal={arXiv preprint arXiv:2605.27210},
+  year={2026},
+  eprint={2605.27210},
+  archivePrefix={arXiv},
+  primaryClass={quant-ph},
+  url={https://arxiv.org/abs/2605.27210}
+}
+```
+
 ## License
 
 This work is licensed under the [Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC-BY-NC-SA-4.0)](https://creativecommons.org/licenses/by-nc-sa/4.0/) - see [LICENSE](LICENSE) file.

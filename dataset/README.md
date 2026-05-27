@@ -166,11 +166,15 @@ Generated solutions must be compatible with:
 If you use this dataset, please cite:
 
 ```bibtex
-@misc{qiskit-quantum-katas,
+@article{cruzbenito2026qiskitquantumkatas,
   title={Qiskit QuantumKatas: Adapting Microsoft's Quantum Computing Exercises for LLM Evaluation},
   author={Cruz-Benito, Juan and Faro, Ismael},
+  journal={arXiv preprint arXiv:2605.27210},
   year={2026},
-  howpublished={\url{https://huggingface.co/datasets/Qiskit/qiskit-quantumkatas}}
+  eprint={2605.27210},
+  archivePrefix={arXiv},
+  primaryClass={quant-ph},
+  url={https://arxiv.org/abs/2605.27210}
 }
 ```
 
