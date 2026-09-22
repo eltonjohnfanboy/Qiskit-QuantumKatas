@@ -4,6 +4,9 @@
 
 Benchmark LLMs on quantum computing tasks using the Quantum Katas dataset translated to Qiskit.
 
+> [!NOTE]
+> This repository is associated to a [research publication](https://arxiv.org/abs/2605.27210) and the code here is not actively maintained. This is not an officially supported IBM Quantum software.
+
 ## Dataset
 
 The dataset contains **350 quantum computing tasks** across 26 categories, derived from Microsoft's [QuantumKatas](https://github.com/microsoft/QuantumKatas) and translated to Qiskit.
